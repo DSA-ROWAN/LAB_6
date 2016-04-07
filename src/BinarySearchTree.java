@@ -6,13 +6,20 @@ import java.util.LinkedList;
 public class BinarySearchTree<T extends Comparable<T>> 
 {
 	private BinaryNode<T> root = null;
-	private int size = 0;
+	public int size = 0;
 	
 	public BinarySearchTree(){
 		
 	}
 	
-	public BinaryNode<T> root(){
+	protected BinaryNode<T> root(T val){
+		if(root == null){
+			root = new BinaryNode<T>(val);
+		}
+		return root;
+	}
+	
+	private BinaryNode<T> root(){
 		return root;
 	}
 	
@@ -25,7 +32,7 @@ public class BinarySearchTree<T extends Comparable<T>>
 		root = null;
 	}
 	
-	protected BinaryNode<T> search(Comparable<T> item){
+	private BinaryNode<T> search(Comparable<T> item){
 		if(this.isEmpty()) return null;
 		return this.recursiveSearch(this.root(), item);
 		
@@ -52,13 +59,13 @@ public class BinarySearchTree<T extends Comparable<T>>
 			BinaryNode<T> curr = this.root();
 			boolean done = false;
 			
-			BinaryNode<T> newNode = null;
+			BinaryNode<T> newNode = new BinaryNode<T>(item);
 			
 			while(!done){
 				int comp = item.compareTo(curr.getValue());
 				
 				if(comp == 0){
-					throw new Exception();
+					throw new Exception("Duplicate Value");
 				}
 				
 				if(comp < 0){
@@ -69,17 +76,17 @@ public class BinarySearchTree<T extends Comparable<T>>
 						curr = curr.getLeft();
 					}
 				}else{
-					if(root.right == null){
-						root.setRight(newNode);
+					if(curr.getRight() == null){
+						curr.setRight(newNode);
 						done = true;
 					}else{
 						curr = curr.getRight();
 					}
 				}
 			}
-			newNode = new BinaryNode<T>(item);
 			newNode.setParent(curr);
 			size++;
+			return;
 		}
 	}
 	
@@ -119,7 +126,7 @@ public class BinarySearchTree<T extends Comparable<T>>
 		deleteHere(deleteNode, hold);
 		
 		if(this.root == deleteNode){
-			this.clear();
+
 		}
 		size--;
 		return deleteNode.getValue();
@@ -127,15 +134,28 @@ public class BinarySearchTree<T extends Comparable<T>>
 	
 	private void deleteHere(BinaryNode<T> deleteNode, BinaryNode<T> attach){
 		BinaryNode<T> parent = deleteNode.parent;
-		deleteNode = null;
+		
 		if(parent == null){
+			this.root = attach;
+			if(attach != null){
+				attach.setParent(null);
+			}
 			return;
 		}
+		
 		if(deleteNode == parent.left){
 			parent.setLeft(attach);
+			if(attach != null){
+				attach.setParent(parent);
+			}
+			deleteNode = null;
 			return;
 		}
 		parent.setRight(attach);
+		if(attach != null){
+			attach.setParent(parent);
+		}
+		deleteNode = null;
 		return;
 	}
 	
@@ -168,9 +188,9 @@ public class BinarySearchTree<T extends Comparable<T>>
 		int[] count = new int[1];
 		
 		if(val1.compareTo(val2) > 0){//val1 > val2 = -1
-			this._count(this.root, val1, val2, count);
-		}else{
 			this._count(this.root, val2, val1, count);
+		}else{
+			this._count(this.root, val1, val2, count);
 		}		
 	
 		return count[0];
@@ -178,7 +198,7 @@ public class BinarySearchTree<T extends Comparable<T>>
 	
 	public int _count(BinaryNode<T> node, T minVal, T maxVal, int[] count){
 		if(node != null){
-			if(node.getLeft().getValue().compareTo(node.getValue()) < 0){
+			if(node.getLeft() != null && node.getLeft().getValue().compareTo(node.getValue()) < 0){
 				this._count(node.getLeft(), minVal, maxVal, count);
 			}
 			
@@ -186,7 +206,7 @@ public class BinarySearchTree<T extends Comparable<T>>
 				count[0]++;
 			}
 			
-			if(node.getRight().getValue().compareTo(node.getValue()) > 0){
+			if(node.getRight() != null && node.getRight().getValue().compareTo(node.getValue()) > 0){
 				this._count(node.getRight(), minVal, maxVal, count);
 			}
 		}
@@ -196,19 +216,40 @@ public class BinarySearchTree<T extends Comparable<T>>
 	public BinarySearchTree<T> clone(){
 		BinarySearchTree<T> newTree = new BinarySearchTree<T>();
 		try {
-			this._clone(this.root, newTree);
+			if(this.root != null){
+				this._clone(this.root, newTree.root(this.root.getValue()));
+				newTree.size = this.size;
+			}
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		return newTree;
 	}
 	
-	private void _clone(BinaryNode<T> node, BinarySearchTree<T> tree) throws Exception{
+	private BinaryNode<T> _clone(BinaryNode<T> node, BinaryNode<T> newNode) throws Exception{
 		if(node != null){
-			this._clone(node.getLeft(), tree);
-			tree.insert(node.getValue());
-			this._clone(node.getRight(), tree);
+			newNode.setValue(node.getValue());
+			BinaryNode<T> newLeft = null;
+			BinaryNode<T> newRight = null;
+			
+			if(node.getLeft() != null){
+				newLeft = new BinaryNode<T>(node.getLeft().getValue());
+				newLeft.setParent(newNode);
+				_clone(node.getLeft(), newLeft);
+			}
+			
+			if(node.getRight() != null){
+				newRight = new BinaryNode<T>(node.getRight().getValue());
+				newRight.setParent(newNode);
+				_clone(node.getRight(), newRight);
+			}
+			
+			newNode.setLeft(newLeft);
+			newNode.setRight(newRight);
+			
+			return null;
+		}else{
+			return node;
 		}
 	}
 	
@@ -233,7 +274,17 @@ public class BinarySearchTree<T extends Comparable<T>>
                     printVal += count + ": ";
                     count++;
                 }
-                printVal += currNode.getValue() + " ";
+                
+                String direction = "";
+                
+                if(currNode != this.root && currNode.getParent().getLeft() != null
+                		&& currNode == currNode.getParent().getLeft()){
+                	direction = " left node of " + currNode.getParent().getValue();
+                }else if(currNode != this.root){
+                	direction = " right node of " + currNode.getParent().getValue();
+                }
+                
+                printVal += currNode.getValue() + direction + " ";
                 if(currentLevel.size() > 0)
                 {
                     printVal += "         ";
@@ -272,7 +323,7 @@ public class BinarySearchTree<T extends Comparable<T>>
     	return false;
     }
     
-    public static <E extends Comparable<E>> LinkedList<E> inOrder(BinarySearchTree<E> treeToSearch, E item) throws Exception{
+    public static <E extends Comparable<E>> LinkedList<E> inOrder(BinarySearchTree<E> treeToSearch) throws Exception{
     	return treeToSearch.inOrder();
     }
     
